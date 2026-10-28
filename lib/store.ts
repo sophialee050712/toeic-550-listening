@@ -1,5 +1,7 @@
-// Single localStorage store for the whole MVP. No login, no backend, no sync.
-// Key versioned so a future format change can migrate cleanly.
+// Single progress store. Local copy always lives in localStorage; when a
+// Supabase session exists, every save also pushes to the cloud (see sync.ts)
+// so iPhone and computer converge on the newest copy.
+import { pushProgress } from "./sync";
 export type MockResult = {
   id: string;
   date: string; // YYYY-MM-DD
@@ -15,6 +17,7 @@ export type PartKey = "p1" | "p2" | "p3" | "p4";
 
 export type Progress = {
   version: 1;
+  updatedAt: string; // ISO timestamp of the last save; sync compares this
   sessionDates: string[]; // YYYY-MM-DD, one entry per active day
   answers: Record<PartKey, { correct: number; total: number }>;
   mocks: MockResult[];
@@ -34,6 +37,7 @@ export function todayStr(d = new Date()): string {
 export function emptyProgress(): Progress {
   return {
     version: 1,
+    updatedAt: "",
     sessionDates: [],
     answers: {
       p1: { correct: 0, total: 0 },
@@ -60,6 +64,7 @@ export function loadProgress(): Progress {
     return {
       ...base,
       ...parsed,
+      updatedAt: parsed.updatedAt || "",
       answers: { ...base.answers, ...(parsed.answers || {}) },
       dictation: { ...base.dictation, ...(parsed.dictation || {}) },
       vocab: parsed.vocab || {},
@@ -71,13 +76,20 @@ export function loadProgress(): Progress {
   }
 }
 
-export function saveProgress(p: Progress) {
+export function saveProgress(p: Progress, opts?: { push?: boolean }) {
   if (typeof window === "undefined") return;
+  // When push is disabled (adopting a cloud copy on sync), keep the cloud
+  // timestamp so the next sync does not treat this copy as newer.
+  const toSave: Progress =
+    opts?.push === false ? p : { ...p, updatedAt: new Date().toISOString() };
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {
     // Storage full / private mode: progress simply is not persisted.
   }
+  // Fire-and-forget cloud push: a failed push never blocks studying, and
+  // the next app open re-syncs from the newest copy on either side.
+  if (opts?.push !== false) void pushProgress(toSave);
 }
 
 export function withSession(p: Progress, date = todayStr()): Progress {

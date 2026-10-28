@@ -93,7 +93,7 @@ export default function Home() {
       </div>
 
       <div className="card">
-        <p className="muted">Lưu ý quan trọng: app này chỉ lưu trên thiết bị này. Xóa dữ liệu trình duyệt sẽ mất tiến độ. Chưa có đồng bộ điện thoại — máy tính.</p>
+        <p className="muted">Lưu ý quan trọng: khi chưa đăng nhập ở thanh đồng bộ phía trên, tiến độ chỉ lưu trên thiết bị này và xóa dữ liệu trình duyệt sẽ mất tiến độ. Đăng nhập cùng 1 tài khoản trên iPhone và máy tính để đồng bộ.</p>
         <button onClick={() => { const np = resetProgress(); setP(np); }} style={{ borderColor: "#b91c1c", color: "#b91c1c" }}>
           Xóa toàn bộ tiến độ (không khôi phục được)
         </button>
